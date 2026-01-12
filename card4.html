@@ -921,12 +921,35 @@ function handleNetworkData(data) {
     } else if (data.type === 'OPPONENT_DRAW') {
         let c = new Card('fire', 1, false); 
         c.x = 60; c.y = height/2 + 30; c.isFaceUp = false;
-        opponentHand.push(c); 
+        opponentHand.push(c);
+        
+        // Force opponent cards to recalculate positions immediately
+        let oppScale = 0.8;
+        let oppW = cardW * oppScale;
+        let oppH = cardH * oppScale;
+        let oppSpread = Math.min(width / (opponentHand.length + 2), oppW * 0.8);
+        let oppStart = width/2 - ((opponentHand.length - 1) * oppSpread) / 2;
+        opponentHand.forEach((c, i) => {
+            c.targetX = oppStart + i * oppSpread; 
+            c.targetY = oppH * 0.6;
+        });
+        
         playSound('deal');
         showFloatingText("Opponent Drew", width/2, 100, "#aaa");
         turn = 'me';
     } else if (data.type === 'MOON_ATTACK') {
         if(opponentHand.length > 0) opponentHand.pop();
+        // Force opponent cards to recalculate positions immediately
+        let oppScale = 0.8;
+        let oppW = cardW * oppScale;
+        let oppH = cardH * oppScale;
+        let oppSpread = Math.min(width / (opponentHand.length + 2), oppW * 0.8);
+        let oppStart = width/2 - ((opponentHand.length - 1) * oppSpread) / 2;
+        opponentHand.forEach((c, i) => {
+            c.targetX = oppStart + i * oppSpread; 
+            c.targetY = oppH * 0.6;
+        });
+        
         let moonC = new Card('moon', 0, false); moonC.x = width/2; moonC.y = -100;
         moonC.targetX = width/2; moonC.targetY = height/2;
         discardPile.push(moonC);
@@ -955,6 +978,17 @@ function handleNetworkData(data) {
             // Remove the mirror card from opponent's hand visually
             if (opponentHand.length > 0) {
                 opponentHand.pop(); // Remove the card they used for parry
+                
+                // Force opponent cards to recalculate positions immediately
+                let oppScale = 0.8;
+                let oppW = cardW * oppScale;
+                let oppH = cardH * oppScale;
+                let oppSpread = Math.min(width / (opponentHand.length + 2), oppW * 0.8);
+                let oppStart = width/2 - ((opponentHand.length - 1) * oppSpread) / 2;
+                opponentHand.forEach((c, i) => {
+                    c.targetX = oppStart + i * oppSpread; 
+                    c.targetY = oppH * 0.6;
+                });
             }
             // Add the mirror card to discard pile to show it was played
             let mirrorCard = new Card('mirror', 0, false);
@@ -1175,7 +1209,18 @@ function processOpponentMove(cardData, isCrit) {
     let card = new Card(cardData.suit, cardData.value, false);
     
     // Remove card from opponent's hand BEFORE checking for mirror special case
-    if(opponentHand.length > 0) opponentHand.pop(); 
+    if(opponentHand.length > 0) opponentHand.pop();
+    
+    // Force opponent cards to recalculate positions immediately
+    let oppScale = 0.8;
+    let oppW = cardW * oppScale;
+    let oppH = cardH * oppScale;
+    let oppSpread = Math.min(width / (opponentHand.length + 2), oppW * 0.8);
+    let oppStart = width/2 - ((opponentHand.length - 1) * oppSpread) / 2;
+    opponentHand.forEach((c, i) => {
+        c.targetX = oppStart + i * oppSpread; 
+        c.targetY = oppH * 0.6;
+    });
     
     card.x = width/2; card.y = -100;
     card.targetX = width/2; card.targetY = height/2;
@@ -1361,7 +1406,20 @@ function update() {
                 canParry = false; 
             } else {
                 let c = new Card('fire', 1, false); c.x = width/2; c.y = 0;
-                opponentHand.push(c); playSound('deal');
+                opponentHand.push(c);
+                
+                // Force opponent cards to recalculate positions immediately
+                let oppScale = 0.8;
+                let oppW = cardW * oppScale;
+                let oppH = cardH * oppScale;
+                let oppSpread = Math.min(width / (opponentHand.length + 2), oppW * 0.8);
+                let oppStart = width/2 - ((opponentHand.length - 1) * oppSpread) / 2;
+                opponentHand.forEach((c, i) => {
+                    c.targetX = oppStart + i * oppSpread; 
+                    c.targetY = oppH * 0.6;
+                });
+                
+                playSound('deal');
             }
             projectiles.splice(i, 1);
         }
