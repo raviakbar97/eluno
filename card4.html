@@ -1160,7 +1160,10 @@ function spawnProjectiles(targetIsMe, slowMotion) {
 
 function processOpponentMove(cardData, isCrit) {
     let card = new Card(cardData.suit, cardData.value, false);
+    
+    // Remove card from opponent's hand BEFORE checking for mirror special case
     if(opponentHand.length > 0) opponentHand.pop(); 
+    
     card.x = width/2; card.y = -100;
     card.targetX = width/2; card.targetY = height/2;
     discardPile.push(card);
