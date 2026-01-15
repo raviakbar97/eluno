@@ -196,7 +196,6 @@ const SFX_SPRITES = {
     play:   { start: 3,  dur: 1 },
     error:  { start: 6,  dur: 1 },
     crit:   { start: 8,  dur: 2 },
-    moon:   { start: 15, dur: 7 },
     parry:  { start: 11, dur: 3 }
 };
 
@@ -234,7 +233,6 @@ const ASSETS_URL = {
     fire: 'https://github.com/viqihakbarrr-cyber/kkk/blob/main/BCfire.png?raw=true',
     water: 'https://github.com/viqihakbarrr-cyber/kkk/blob/main/BCwater.png?raw=true',
     leaf: 'https://github.com/viqihakbarrr-cyber/kkk/blob/main/BCleaf.png?raw=true',
-    moon: 'https://github.com/viqihakbarrr-cyber/kkk/blob/main/SCpurple.png?raw=true',
     mirror: 'https://github.com/viqihakbarrr-cyber/kkk/blob/main/SCmiror.png?raw=true',
     back: 'https://github.com/viqihakbarrr-cyber/kkk/blob/main/Back.png?raw=true'
 };
@@ -303,9 +301,9 @@ let cardScale = 1;
 let cardW = 100;
 let cardH = 160;
 
-const SUITS = ['fire', 'water', 'leaf', 'moon', 'mirror'];
+const SUITS = ['fire', 'water', 'leaf', 'mirror'];
 const BASIC_SUITS = ['fire', 'water', 'leaf'];
-const COLORS = { fire: '#FF2222', water: '#0088FF', leaf: '#00CC44', moon: '#9933FF', mirror: '#00FFFF' };
+const COLORS = { fire: '#FF2222', water: '#0088FF', leaf: '#00CC44', mirror: '#00FFFF' };
 const COUNTER_MAP = { fire: 'leaf', leaf: 'water', water: 'fire' };
 
 let deck = [];
@@ -321,9 +319,6 @@ let dragIdx = -1;
 let dragOffsetX = 0;
 let dragOffsetY = 0;
 
-let blindMode = false;
-let blindIntensity = 0; 
-let mustPlayBasic = false; 
 let canParry = false; 
 
 // Fullscreen Logic
@@ -420,9 +415,7 @@ class Card {
         let showFace = (forceFaceUp !== undefined) ? forceFaceUp : this.isFaceUp;
 
         if (showFace) {
-            if(this.suit === 'moon') {
-                ctx.shadowColor = COLORS.moon; ctx.shadowBlur = 20;
-            } else if (this.suit === 'mirror') {
+            if (this.suit === 'mirror') {
                 ctx.shadowColor = COLORS.mirror; ctx.shadowBlur = 20;
             } else {
                 ctx.shadowColor = 'rgba(0,0,0,0.5)'; ctx.shadowBlur = (this.isSelected || this.isDragging) ? 25 : 5;
@@ -436,7 +429,7 @@ class Card {
             }
             ctx.shadowBlur = 0; ctx.shadowOffsetY = 0;
 
-            if (this.suit !== 'moon' && this.suit !== 'mirror') {
+            if (this.suit !== 'mirror') {
                 ctx.fillStyle = "#FFFFFF"; ctx.strokeStyle = "#000000"; ctx.lineWidth = 2; 
                 let fontSize = drawW * 0.18; 
                 ctx.font = `700 ${fontSize}px 'Cinzel', serif`;
@@ -873,7 +866,7 @@ function resetGameVars() {
     document.getElementById('btn-rematch').innerText = "REMATCH";
     document.getElementById('rematch-msg').classList.add('hidden');
     projectiles = [];
-    blindMode = false; blindIntensity = 0; mustPlayBasic = false; canParry = false;
+    canParry = false;
 }
 
 function requestRematch() {
@@ -901,7 +894,7 @@ function resetGameVars() {
     document.getElementById('btn-rematch').innerText = "REMATCH";
     document.getElementById('rematch-msg').classList.add('hidden');
     projectiles = [];
-    blindMode = false; blindIntensity = 0; mustPlayBasic = false; canParry = false;
+    canParry = false;
 }
 
 // --- DATA HANDLING ---
@@ -937,36 +930,6 @@ function handleNetworkData(data) {
         playSound('deal');
         showFloatingText("Opponent Drew", width/2, 100, "#aaa");
         turn = 'me';
-    } else if (data.type === 'MOON_ATTACK') {
-        if(opponentHand.length > 0) opponentHand.pop();
-        // Force opponent cards to recalculate positions immediately
-        let oppScale = 0.8;
-        let oppW = cardW * oppScale;
-        let oppH = cardH * oppScale;
-        let oppSpread = Math.min(width / (opponentHand.length + 2), oppW * 0.8);
-        let oppStart = width/2 - ((opponentHand.length - 1) * oppSpread) / 2;
-        opponentHand.forEach((c, i) => {
-            c.targetX = oppStart + i * oppSpread; 
-            c.targetY = oppH * 0.6;
-        });
-        
-        let moonC = new Card('moon', 0, false); moonC.x = width/2; moonC.y = -100;
-        moonC.targetX = width/2; moonC.targetY = height/2;
-        discardPile.push(moonC);
-        setTimeout(() => {
-            spawnExplosion(width/2, height/2, COLORS.moon); playSound('moon');
-            blindMode = true; blindIntensity = 1.0; 
-            showFloatingText("BLINDED!", width/2, height/2, "#FFF");
-        }, 300);
-    } else if (data.type === 'MOON_FOLLOWUP') {
-        processOpponentMove(data.card, data.isCrit);
-        showFloatingText("ONE SHOT CHANCE", width/2, height/2 + 50, "red");
-    } else if (data.type === 'BLIND_CLEARED') {
-        blindMode = false; blindIntensity = 0;
-        showFloatingText("DARKNESS FADED", width/2, height/2, "#FFF");
-        processOpponentMove(data.card, data.isCrit);
-    } else if (data.type === 'BLIND_FAIL') {
-        showFloatingText("MISSED!", width/2, 150, "red"); turn = 'me'; 
     } else if (data.type === 'PARRY_SUCCESS') {
         projectiles = []; 
         showFloatingText("PARRIED!", width/2, height/2, COLORS.mirror);
@@ -1017,12 +980,10 @@ function startMultiplayerGame() {
         h.push({suit: 'fire', value: Math.ceil(Math.random()*9)});
         h.push({suit: 'water', value: Math.ceil(Math.random()*9)});
         h.push({suit: 'leaf', value: Math.ceil(Math.random()*9)});
-        h.push({suit: 'moon', value: 0});
         h.push({suit: 'mirror', value: 0});
         
         let r = Math.random();
-        if(r < 0.1) h.push({suit: 'moon', value:0});
-        else if(r < 0.2) h.push({suit: 'mirror', value:0});
+        if(r < 0.1) h.push({suit: 'mirror', value:0});
         else {
             let s = BASIC_SUITS[Math.floor(Math.random()*3)];
             h.push({suit: s, value: Math.ceil(Math.random()*9)});
@@ -1086,8 +1047,7 @@ function playDealAnimation(myCards, oppCount, topCard) {
 
 function isValidMove(card, topCard) {
     if (card.suit === 'mirror') return true; 
-    if (card.suit === 'moon') return true; 
-    if (topCard.suit === 'moon' || topCard.suit === 'mirror') return true; 
+    if (topCard.suit === 'mirror') return true; 
     return card.suit === topCard.suit || card.value === topCard.value;
 }
 
@@ -1117,45 +1077,8 @@ function playerInput(cardIndex) {
 
     if (turn !== 'me') return false;
 
-    if (blindMode && blindIntensity === 1.0) {
-        if (isValidMove(card, top)) {
-            executeMove(cardIndex, card, top, false);
-            blindMode = false; blindIntensity = 0;
-            conn.send({ 
-                type: 'BLIND_CLEARED', card: { suit: card.suit, value: card.value },
-                isCrit: (COUNTER_MAP[card.suit] === top.suit)
-            });
-            return true;
-        } else {
-            card.shake = 30; playSound('error');
-            showFloatingText("WRONG CARD!", card.x, card.y - 70, "red");
-            turn = 'opponent'; 
-            conn.send({ type: 'BLIND_FAIL' });
-            return false;
-        }
-    }
-
-    if (mustPlayBasic) {
-        if (card.suit === 'moon' || card.suit === 'mirror') {
-            card.shake = 20; showFloatingText("Basic Card Only!", card.x, card.y - 70, "red");
-            return false;
-        }
-        if (!BASIC_SUITS.includes(card.suit)) return false;
-    }
-
     if (isValidMove(card, top)) {
-        if (card.suit === 'moon') {
-            executeMove(cardIndex, card, top, false);
-            spawnExplosion(width/2, height/2, COLORS.moon);
-            playSound('moon');
-            canParry = false; 
-            blindMode = true; 
-            blindIntensity = 0.1; 
-            mustPlayBasic = true; 
-            turn = 'me'; 
-            showFloatingText("EXTRA TURN (Basic Only)", width/2, height/2 + 100, COLORS.moon);
-            conn.send({ type: 'MOON_ATTACK' });
-        } else if (card.suit === 'mirror') {
+        if (card.suit === 'mirror') {
             executeMove(cardIndex, card, top, false);
             playSound('play');
             turn = 'me'; 
@@ -1164,14 +1087,8 @@ function playerInput(cardIndex) {
         } else {
             let isCrit = COUNTER_MAP[card.suit] === top.suit;
             executeMove(cardIndex, card, top, isCrit);
-            if (mustPlayBasic) {
-                mustPlayBasic = false;
-                conn.send({ type: 'MOON_FOLLOWUP', card: { suit: card.suit, value: card.value }, isCrit: isCrit });
-                turn = 'opponent'; 
-            } else {
-                conn.send({ type: 'OPPONENT_MOVE', card: { suit: card.suit, value: card.value }, isCrit: isCrit });
-                turn = 'opponent';
-            }
+            conn.send({ type: 'OPPONENT_MOVE', card: { suit: card.suit, value: card.value }, isCrit: isCrit });
+            turn = 'opponent';
         }
         if(myHand.length === 0) endGame("YOU WIN!", "Victory Achieved");
         return true;
@@ -1258,8 +1175,7 @@ function requestDraw() {
     if(isHost) newCard = drawCardFromDeckLogic();
     else {
         let r = Math.random();
-        if(r < 0.05) newCard = new Card('moon', 0, true);
-        else if (r < 0.08) newCard = new Card('mirror', 0, true);
+        if (r < 0.08) newCard = new Card('mirror', 0, true);
         else {
             let s = BASIC_SUITS[Math.floor(Math.random()*3)]; let v = Math.floor(Math.random()*9)+1;
             newCard = new Card(s, v, true);
@@ -1274,18 +1190,12 @@ function requestDraw() {
         myHand.push(newCard); 
         playSound('deal');
         
-        if (mustPlayBasic) {
-            mustPlayBasic = false; conn.send({ type: 'OPPONENT_DRAW' }); turn = 'opponent';
-            showFloatingText("Combo Skipped", width/2, height/2, "#aaa");
-        } else {
-            conn.send({ type: 'OPPONENT_DRAW' }); turn = 'opponent'; showFloatingText("Turn Ended", width/2, height/2, "#aaa");
-        }
+        conn.send({ type: 'OPPONENT_DRAW' }); turn = 'opponent'; showFloatingText("Turn Ended", width/2, height/2, "#aaa");
     }
 }
 
 function drawCardFromDeckLogic() {
     let r = Math.random(); 
-    if(r < 0.05) return new Card('moon', 0, true);
     if(r < 0.08) return new Card('mirror', 0, true);
     let s = BASIC_SUITS[Math.floor(Math.random()*3)]; let v = Math.floor(Math.random()*9)+1;
     return new Card(s, v, true);
@@ -1352,11 +1262,8 @@ function draw() {
         c.draw(ctx, false, undefined, undefined, oppW, oppH);
     });
 
-    if (blindMode) { ctx.fillStyle = `rgba(0, 0, 0, ${blindIntensity})`; ctx.fillRect(0, 0, width, height); }
-
     let pSpread = Math.min(width / (myHand.length + 1), cardW + 10);
     let pStart = width/2 - ((myHand.length - 1) * pSpread) / 2;
-    let handYOffset = (blindMode && blindIntensity === 1.0) ? -50 : 0;
     
     myHand.forEach((c, i) => {
         if (!c.isDragging && !c.isAnimatingPos) {
@@ -1364,7 +1271,7 @@ function draw() {
             let baseHeight = height - (cardH * 0.5); 
             if (c.isSelected) baseHeight = height - (cardH * 1.0);
             else if (c.isHovered) baseHeight = height - (cardH * 0.65);
-            c.targetY = baseHeight + handYOffset;
+            c.targetY = baseHeight;
         }
         
         if (i !== dragIdx) {
@@ -1383,9 +1290,7 @@ function draw() {
     if(gameState === 'PLAYING' && !isAnimating) {
         ctx.font = "bold 16px Orbitron"; ctx.fillStyle = turn === 'me' ? '#00FF00' : '#888'; ctx.textAlign = 'center';
         let txt = turn === 'me' ? "YOUR TURN" : "OPPONENT'S TURN";
-        if(mustPlayBasic) txt = "COMBO: PLAY BASIC CARD!";
         if(canParry) txt = "!!! PARRY CHANCE !!!";
-        if(blindMode && blindIntensity === 1.0 && turn === 'me') txt = "GUESS THE CARD!";
         ctx.fillText(txt, width/2, height/2 + cardH/2 + 50);
     }
 }
@@ -1465,7 +1370,7 @@ function onPointerDown(e) {
     let deckX = 60; let deckY = height/2 + 30;
     if (x > deckX - cardW/2 - 20 && x < deckX + cardW/2 + 20 &&
         y > deckY - cardH/2 - 20 && y < deckY + cardH/2 + 20) {
-        if (!blindMode || blindIntensity < 0.5) requestDraw();
+        requestDraw();
         return;
     }
 

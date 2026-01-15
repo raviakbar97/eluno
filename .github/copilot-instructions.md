@@ -48,41 +48,22 @@ npm run dev
 3. **Share HTML**: Distribute updated `card4.html` to players
 4. **No Server Needed**: Players just need the HTML file and internet connection
 
-## Project-Specific Patterns & Conventions
-
-## Critical Development Workflows
-
-### Local Development Setup
+### Testing Broker Health
 ```bash
-# Install dependencies
-npm install
+# Check if broker is running
+curl http://localhost:3000/health
 
-# Start broker server
-npm start
-
-# Development with auto-restart
-npm run dev
+# Expected response:
+# {"status":"ok","queueSize":0,"uptime":123.45}
 ```
-
-### Testing Matchmaking
-1. Start broker server
-2. Open `card4.html` in two browser tabs
-3. Click "FIND MATCH" in both tabs
-4. System automatically pairs them and starts game
-
-### Deployment Process
-1. **Update Broker URL**: In `card4.html`, change `BROKER_URL` from localhost to deployed URL
-2. **Deploy Broker**: Use Glitch (easiest), Render, or Heroku
-3. **Share HTML**: Distribute updated `card4.html` to players
-4. **No Server Needed**: Players just need the HTML file and internet connection
 
 ## Project-Specific Patterns & Conventions
 
 ### Configuration Management
-- **Hardcoded URLs**: Broker URL is hardcoded in `card4.html` (line ~350)
-- **Environment Variables**: Broker server uses `process.env.PORT` for deployment
+- **Hardcoded URLs**: Broker URL is hardcoded in `card4.html` (line ~370) as `BROKER_URL`
+- **Environment Variables**: Broker server uses `process.env.PORT` for deployment (default: 3000)
 - **No Config Files**: All configuration is inline for simplicity
-- **Asset URLs**: All game assets loaded from GitHub raw URLs
+- **Asset URLs**: All game assets loaded from GitHub raw URLs (https://github.com/viqihakbarrr-cyber/kkk/blob/main/...)
 
 ### Error Handling Strategy
 - **Broker Errors**: Displayed in UI with user-friendly messages
@@ -109,10 +90,6 @@ Three main UI states in `card4.html`:
 - `START_GAME` → Host sends initial game state (deck, hands, top card)
 - `OPPONENT_MOVE` → Card play notification with critical hit info
 - `OPPONENT_DRAW` → Draw card notification
-- `MOON_ATTACK` → Special card effect (blind mode)
-- `MOON_FOLLOWUP` → Follow-up move after moon attack
-- `BLIND_CLEARED` → Blind effect ended
-- `BLIND_FAIL` → Failed blind guess
 - `PARRY_SUCCESS` → Mirror card parry
 - `REQUEST_REMATCH` → Rematch request
 - `REMATCH_ACCEPTED` → Rematch accepted
@@ -143,13 +120,39 @@ if (typeof io === 'undefined') {
 - **Guest receives**: Initial state, then reacts to host decisions
 - **Critical hits**: Determined by host using COUNTER_MAP
 
+### PeerJS Integration Pattern
+```javascript
+// Client-side pattern
+peer = new Peer(undefined, { debug: 1 });
+peer.on('open', (id) => socket.emit('join_queue', { peerId: id }));
+peer.on('connection', (conn) => setupConnection());
+peer.on('error', (err) => handleError());
+```
+
+### Socket.io Dynamic Loading
+```javascript
+// Only load when needed
+if (typeof io === 'undefined') {
+    const script = document.createElement('script');
+    script.src = 'https://cdn.socket.io/4.7.2/socket.io.min.js';
+    script.onload = () => initializeSocket();
+    script.onerror = () => handleError();
+}
+```
+
+### Host Authority Pattern
+- **Host generates**: Deck, both hands, top card, turn order
+- **Host validates**: All moves, draws, special effects
+- **Guest receives**: Initial state, then reacts to host decisions
+- **Critical hits**: Determined by host using COUNTER_MAP
+
 ## Integration Points & Dependencies
 
 ### External Dependencies
-- **PeerJS**: P2P connection library (loaded from CDN in HTML)
-- **Socket.io**: Real-time communication (loaded dynamically)
-- **Express**: Web server framework
-- **Socket.io Server**: WebSocket server for matchmaking
+- **PeerJS**: P2P connection library (loaded from CDN in HTML, version 1.5.2)
+- **Socket.io**: Real-time communication (loaded dynamically from CDN, version 4.7.2)
+- **Express**: Web server framework (version ^4.18.2)
+- **Socket.io Server**: WebSocket server for matchmaking (version ^4.7.2)
 
 ### Browser Requirements
 - **WebRTC Support**: Required for P2P connections
@@ -163,7 +166,7 @@ if (typeof io === 'undefined') {
 - **Port**: Default 3000, uses `process.env.PORT` for production
 - **Static Files**: Only `card4.html` needs to be served separately
 - **No Database**: Queue is memory-only, no persistence needed
-- **Asset Hosting**: Game assets must be accessible via HTTPS
+- **Asset Hosting**: Game assets must be accessible via HTTPS (GitHub raw URLs)
 
 ## Key Files & Their Roles
 
@@ -173,18 +176,20 @@ if (typeof io === 'undefined') {
 - Role assignment logic (Host/Guest)
 - Health check endpoint (`/health`)
 - Periodic cleanup every 10 seconds
+- Memory-only queue storage
 
-### `card4.html` (1510 lines)
+### `card4.html` (1658 lines)
 - Complete game client with matchmaking integrated
-- PeerJS connection management
+- PeerJS connection management (version 1.5.2)
 - Canvas-based game rendering
 - Audio management with sprite system (SFX_URL, SFX_SPRITES)
 - Touch/mouse input handling
 - Game state machine (MENU, PLAYING, GAMEOVER)
+- **Current BROKER_URL**: `https://beagle-causal-gorilla.ngrok-free.app` (line 370)
 
 ### `package.json`
-- Minimal dependencies: express, socket.io
-- Scripts: `start`, `dev` (nodemon)
+- Minimal dependencies: express ^4.18.2, socket.io ^4.7.2
+- Scripts: `start` (node matchmaker.js), `dev` (nodemon matchmaker.js)
 - No build process required
 
 ### `README_MATCHMAKING.md`
@@ -196,6 +201,9 @@ if (typeof io === 'undefined') {
 ### `deploy-instructions.txt`
 - Quick reference for deployment
 - Step-by-step platform instructions
+
+### `Dockerfile`
+- Empty file (not implemented)
 
 ## Common Development Tasks
 
@@ -223,18 +231,18 @@ if (typeof io === 'undefined') {
 ## Important Constants & Values
 
 ### Matchmaking Configuration
-- `BROKER_URL`: Must be updated in `card4.html` for production
+- `BROKER_URL`: Must be updated in `card4.html` (line 370) for production
 - `PLAYER_TIMEOUT`: 120000ms (2 minutes) queue timeout
 - `PORT`: 3000 default, `process.env.PORT` for deployment
 - `CLEANUP_INTERVAL`: 10000ms (10 seconds) cleanup interval
 
 ### Game Constants
-- `SUITS`: ['fire', 'water', 'leaf', 'moon', 'mirror']
+- `SUITS`: ['fire', 'water', 'leaf', 'mirror']
 - `BASIC_SUITS`: ['fire', 'water', 'leaf']
 - `COUNTER_MAP`: { fire: 'leaf', leaf: 'water', water: 'fire' }
 - `CARD_RATIO`: 2.5 / 4.0
-- `SFX_URL`: Audio sprite from GitHub
-- `ASSETS_URL`: Card images from GitHub
+- `SFX_URL`: Audio sprite from GitHub raw URLs
+- `ASSETS_URL`: Card images from GitHub raw URLs
 
 ### Network Timeouts
 - Socket.io connection: 10000ms
@@ -287,10 +295,9 @@ if (typeof io === 'undefined') {
 
 ### Card Game Rules
 - **Basic cards**: Fire, Water, Leaf (9 values each)
-- **Special cards**: Moon (blind), Mirror (parry)
+- **Special cards**: Mirror (parry)
 - **Counter system**: Fire → Leaf → Water → Fire
 - **Critical hits**: Playing counter to top card
-- **Moon effect**: Blind mode, must play basic card
 - **Mirror effect**: Extra turn, parry opponent's move
 
 ### Host Responsibilities
@@ -299,7 +306,7 @@ if (typeof io === 'undefined') {
 - Generate top discard
 - Determine turn order
 - Validate all moves
-- Handle special effects
+- Handle mirror card effects
 
 ### Network Data Flow
 1. **Matchmaking**: Broker exchanges Peer IDs
@@ -307,6 +314,38 @@ if (typeof io === 'undefined') {
 3. **Turns**: Players send moves to each other
 4. **Effects**: Host calculates and broadcasts results
 5. **Win Condition**: First to empty hand wins
+
+
+
+### Deployment Considerations
+- **CORS**: Broker server allows all origins (`origin: "*"`)
+- **Port**: Default 3000, uses `process.env.PORT` for production
+- **Static Files**: Only `card4.html` needs to be served separately
+- **No Database**: Queue is memory-only, no persistence needed
+- **Asset Hosting**: Game assets must be accessible via HTTPS (GitHub raw URLs)
+
+## Common Development Tasks
+
+### Adding New Game Features
+1. **Game Logic**: Modify `card4.html` game state management
+2. **Network Events**: Add new event types to both client and server
+3. **UI Updates**: Update lobby screens and game over states
+4. **Testing**: Use two browser tabs for local testing
+5. **Host Authority**: Remember host generates all random elements
+
+### Modifying Matchmaking
+1. **Queue Logic**: Edit `waitingQueue` management in `matchmaker.js`
+2. **Timeout Values**: Adjust `PLAYER_TIMEOUT` (currently 120000ms)
+3. **Role Assignment**: Modify `matchPlayers()` function
+4. **Error Handling**: Update socket event handlers
+5. **Cleanup Interval**: Adjust 10000ms cleanup interval
+
+### Deploying to Production
+1. **Broker**: Deploy `matchmaker.js` + `package.json` to hosting platform
+2. **Client**: Update `BROKER_URL` in `card4.html` (line ~350)
+3. **Distribution**: Share updated HTML file with players
+4. **Monitoring**: Check `/health` endpoint for queue status
+5. **HTTPS**: Ensure broker uses HTTPS for secure connections
 
 ## Next Steps for AI Agents
 
