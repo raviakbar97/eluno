@@ -196,7 +196,7 @@
             <p style="color:#666; margin-bottom:20px;">MULTIPLAYER EDITION</p>
             <button class="main-btn active" onclick="startMatchmaking()">FIND MATCH</button>
             <br>
-            <p style="font-size: 12px; color: #999; margin-top: 15px;">Broker: <span id="broker-status">Checking...</span></p>
+            <p style="font-size: 12px; color: #999; margin-top: 15px;">: <span id="-status">Checking...</span></p>
         </div>
         <div class="modal-box hidden" id="lobby-searching">
             <h2>SEARCHING...</h2>
@@ -339,7 +339,7 @@ function loadAssets() {
             setTimeout(() => {
                 document.getElementById('loading-layer').classList.add('hidden');
                 document.getElementById('lobby-screen').classList.remove('hidden');
-                checkBrokerConnection();
+                checkConnection();
             }, 800);
         }
     }
@@ -367,7 +367,7 @@ let rematchMe = false;
 let rematchOpp = false;
 
 // Matchmaking Configuration
-const BROKER_URL = "https://beagle-causal-gorilla.ngrok-free.app"; // Change this to your deployed broker URL
+const _URL = "https://eluno.dudeid.site/"; // Change this to your deployed  URL
 let socket = null;
 let isSearching = false;
 let matchmakingTimeout = null;
@@ -672,13 +672,13 @@ function resetLobby() {
     }
 }
 
-// --- BROKER CONNECTION & MATCHMAKING ---
+// ---  CONNECTION & MATCHMAKING ---
 
-function checkBrokerConnection() {
-    const statusEl = document.getElementById('broker-status');
+function checkConnection() {
+    const statusEl = document.getElementById('-status');
     if (!statusEl) return;
     
-    fetch(BROKER_URL + '/health')
+    fetch(_URL + '/health')
         .then(response => response.json())
         .then(data => {
             statusEl.innerText = 'Online';
@@ -687,7 +687,7 @@ function checkBrokerConnection() {
         .catch(error => {
             statusEl.innerText = 'Offline';
             statusEl.style.color = '#FF0000';
-            console.error('Broker server unavailable:', error);
+            console.error(' server unavailable:', error);
         });
 }
 
@@ -695,7 +695,7 @@ function startMatchmaking() {
   startBGM();
     if (isSearching) return;
     
-    // Check broker first
+    // Check  first
     showSearchingUI();
     isSearching = true;
     
@@ -717,7 +717,7 @@ function startMatchmaking() {
 
 function initializeSocket() {
     try {
-        socket = io(BROKER_URL, {
+        socket = io(_URL, {
             transports: ['websocket', 'polling'],
             reconnection: false,
             timeout: 10000
@@ -758,14 +758,14 @@ function initializeSocket() {
         });
 
         socket.on('error', (data) => {
-            console.error('Broker error:', data);
+            console.error(' error:', data);
             document.getElementById('search-status').innerText = data.message || 'Server error occurred.';
             isSearching = false;
             setTimeout(() => resetLobby(), 3000);
         });
 
         socket.on('disconnect', (reason) => {
-            console.log('Disconnected from broker:', reason);
+            console.log('Disconnected from :', reason);
             if (isSearching) {
                 document.getElementById('search-status').innerText = 'Disconnected from server.';
                 isSearching = false;
@@ -911,7 +911,7 @@ function handleConnectionReady() {
     document.getElementById('lobby-screen').classList.add('hidden');
     document.getElementById('lobby-connecting').classList.add('hidden');
     
-    // Notify broker that matchmaking is complete
+    // Notify  that matchmaking is complete
     if (socket && socket.connected) {
         socket.emit('leave_queue');
     }
